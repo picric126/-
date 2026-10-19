@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプル支出管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen">
+    <div class="max-w-md mx-auto bg-gray-800 min-h-screen shadow-xl relative pb-10">
+        
+        <!-- ヘッダー -->
+        <header class="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-20">
+            <h1 class="text-xl font-bold text-center text-white">支出管理</h1>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="p-4 space-y-6">
+            
+            <!-- 入力フォーム -->
+            <section class="bg-gray-700/50 rounded-xl p-4 border border-gray-600">
+                <form id="transactionForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">日付</label>
+                        <input type="date" id="dateInput" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors [color-scheme:dark]">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <label class="block text-xs text-gray-400">カテゴリ</label>
+                            <button type="button" id="manageCategoryBtn" class="text-xs text-blue-400 hover:text-blue-300"><i class="fa-solid fa-gear mr-1"></i>管理</button>
+                        </div>
+                        <select id="categorySelect" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors appearance-none">
+                            <!-- カテゴリオプションが動的に入る -->
+                        </select>
+                        <input type="text" id="otherCategoryDetail" placeholder="詳細を入力 (任意)" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 mt-2 outline-none transition-colors hidden">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">金額 (円)</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 font-bold">¥</div>
+                            <input type="number" id="amountInput" min="1" step="1" required placeholder="0" class="w-full bg-gray-700 border border-gray-600 text-white text-lg font-bold rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pl-8 outline-none transition-colors">
+                        </div>
+                        <!-- flex-wrap を追加してスマホでの表示崩れを防止 -->
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <button type="button" class="quick-amount-btn flex-1 min-w-[60px] bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium py-1.5 rounded text-sm transition-colors" data-amount="100">+100</button>
+                            <button type="button" class="quick-amount-btn flex-1 min-w-[60px] bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium py-1.5 rounded text-sm transition-colors" data-amount="500">+500</button>
+                            <button type="button" class="quick-amount-btn flex-1 min-w-[60px] bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium py-1.5 rounded text-sm transition-colors" data-amount="1000">+1k</button>
+                            <button type="button" class="quick-amount-btn flex-1 min-w-[60px] bg-gray-600 hover:bg-gray-500 text-gray-200 font-medium py-1.5 rounded text-sm transition-colors" data-amount="5000">+5k</button>
+                            <button type="button" class="quick-clear-btn flex-1 min-w-[60px] bg-red-900/50 hover:bg-red-800/50 text-red-300 font-medium py-1.5 rounded text-sm transition-colors">クリア</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">メモ (任意)</label>
+                        <input type="text" id="memoInput" placeholder="買ったものなど" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                    </div>
+
+                    <button type="submit" class="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-800 font-bold rounded-lg text-sm px-5 py-3 text-center transition-colors shadow-lg">
+                        記録する
+                    </button>
+                </form>
+            </section>
+
+            <!-- カレンダー -->
+            <section class="bg-gray-700/30 rounded-xl border border-gray-700 overflow-hidden">
+                <div class="flex items-center justify-between p-3 bg-gray-700/50">
+                    <button id="prevMonthBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-600 transition-colors"><i class="fa-solid fa-chevron-left"></i></button>
+                    <h2 id="calendarMonthYear" class="font-bold text-white tracking-wider text-sm">2023年10月</h2>
+                    <button id="nextMonthBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-600 transition-colors"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="grid grid-cols-7 text-center text-xs font-medium text-gray-400 border-b border-gray-700 bg-gray-800/50">
+                    <div class="py-2 text-red-400">日</div><div class="py-2">月</div><div class="py-2">火</div><div class="py-2">水</div><div class="py-2">木</div><div class="py-2">金</div><div class="py-2 text-blue-400">土</div>
+                </div>
+                <div id="calendarDays" class="grid grid-cols-7 grid-rows-5 gap-[1px] bg-gray-700">
+                    <!-- カレンダーの日付がJSで生成される -->
+                </div>
+                <div class="p-3 bg-gray-700/50 flex justify-between items-center text-sm">
+                    <span class="text-gray-400">月間合計:</span>
+                    <span id="monthlyTotalDisplay" class="font-bold text-white text-lg">¥0</span>
+                </div>
+            </section>
+
+            <!-- 選択日の履歴 -->
+            <section>
+                <h3 class="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span id="historyDateLabel">日付を選択してください</span> の支出
+                </h3>
+                <div class="bg-gray-700/30 rounded-xl border border-gray-700 overflow-hidden">
+                    <ul id="historyList" class="divide-y divide-gray-700/50 empty:hidden">
+                        <!-- 履歴リストがJSで生成される -->
+                    </ul>
+                    <div id="emptyHistoryMsg" class="p-6 text-center text-gray-500 text-sm">
+                        記録はありません
+                    </div>
+                </div>
+            </section>
+
+            <!-- グラフエリア -->
+            <section class="space-y-6">
+                <!-- 棒グラフ (サイズ暴走を防ぐラッパー) -->
+                <div class="bg-gray-700/30 rounded-xl border border-gray-700 p-4">
+                    <h3 class="text-sm font-bold text-gray-400 mb-4 text-center">日ごとの支出推移 (当月)</h3>
+                    <div style="position:relative; height:200px; width:100%;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- ドーナツグラフ (サイズ暴走を防ぐラッパー) -->
+                <div class="bg-gray-700/30 rounded-xl border border-gray-700 p-4">
+                    <h3 class="text-sm font-bold text-gray-400 mb-4 text-center">カテゴリ別割合 (当月)</h3>
+                    <div style="position:relative; height:200px; width:100%;">
+                        <canvas id="doughnutChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- カテゴリ管理モーダル (z-50で最前面) -->
+    <div id="categoryModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700 overflow-hidden transform scale-95 transition-transform duration-300" id="categoryModalContent">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
+                <h2 class="text-lg font-bold text-white">カテゴリ管理</h2>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-4 max-h-[60vh] overflow-y-auto">
+                <ul id="manageCategoryList" class="space-y-2">
+                    <!-- カテゴリ管理リストが生成される -->
+                </ul>
+            </div>
+            
+            <div class="p-4 bg-gray-700/50 border-t border-gray-700">
+                <form id="addCategoryForm" class="flex gap-2">
+                    <input type="text" id="newCategoryInput" required placeholder="新しいカテゴリ" class="flex-1 bg-gray-900 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none text-sm">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm px-4 py-2 transition-colors whitespace-nowrap">
+                        追加
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 状態管理 ---
+        const DEFAULT_CATEGORIES = ['交通費', '食費', '飲み物', 'お菓子', '日用品', '旅行', 'その他'];
+        let categories = [];
+        let transactions = [];
+        
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        
+        let barChartInstance = null;
+        let doughnutChartInstance = null;
+
+        // --- DOM要素取得 ---
+        const form = document.getElementById('transactionForm');
+        const dateInput = document.getElementById('dateInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const amountInput = document.getElementById('amountInput');
+        const memoInput = document.getElementById('memoInput');
+        const otherDetailInput = document.getElementById('otherCategoryDetail');
+        
+        const calendarMonthYear = document.getElementById('calendarMonthYear');
+        const calendarDays = document.getElementById('calendarDays');
+        const monthlyTotalDisplay = document.getElementById('monthlyTotalDisplay');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        
+        const historyDateLabel = document.getElementById('historyDateLabel');
+        const historyList = document.getElementById('historyList');
+        const emptyHistoryMsg = document.getElementById('emptyHistoryMsg');
+        
+        const categoryModal = document.getElementById('categoryModal');
+        const categoryModalContent = document.getElementById('categoryModalContent');
+        const manageCategoryBtn = document.getElementById('manageCategoryBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const manageCategoryList = document.getElementById('manageCategoryList');
+        const addCategoryForm = document.getElementById('addCategoryForm');
+        const newCategoryInput = document.getElementById('newCategoryInput');
+
+        // Chart.js の共通設定 (文字色等)
+        Chart.defaults.color = '#9ca3af';
+        Chart.defaults.font.family = 'sans-serif';
+
+        // --- 初期化処理 ---
+        function init() {
+            loadData();
+            setupEventListeners();
+            
+            // 今日の日付を初期セット
+            const todayStr = formatDateString(new Date());
+            dateInput.value = todayStr;
+            selectedDate = new Date();
+            
+            updateCategorySelect();
+            updateView();
+        }
+
+        function loadData() {
+            const savedTx = localStorage.getItem('sim-exp-tx');
+            if (savedTx) {
+                transactions = JSON.parse(savedTx);
+            }
+            const savedCat = localStorage.getItem('sim-exp-cat');
+            if (savedCat) {
+                categories = JSON.parse(savedCat);
+            } else {
+                categories = [...DEFAULT_CATEGORIES];
+                saveCategories();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('sim-exp-tx', JSON.stringify(transactions));
+        }
+
+        function saveCategories() {
+            localStorage.setItem('sim-exp-cat', JSON.stringify(categories));
+        }
+
+        // --- イベントリスナー設定 ---
+        function setupEventListeners() {
+            form.addEventListener('submit', handleFormSubmit);
+            
+            prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+            nextMonthBtn.addEventListener('click', () => changeMonth(1));
+            
+            // クイック入力ボタン
+            document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const addValue = parseInt(e.target.dataset.amount, 10);
+                    const currentValue = parseInt(amountInput.value, 10) || 0;
+                    amountInput.value = currentValue + addValue;
+                });
+            });
+            document.querySelector('.quick-clear-btn').addEventListener('click', () => {
+                amountInput.value = '';
+            });
+
+            // カテゴリの「その他」選択時
+            categorySelect.addEventListener('change', (e) => {
+                if (e.target.value === 'その他') {
+                    otherDetailInput.classList.remove('hidden');
+                } else {
+                    otherDetailInput.classList.add('hidden');
+                    otherDetailInput.value = '';
+                }
+            });
+
+            // 日付入力変更時
+            dateInput.addEventListener('change', (e) => {
+                if(e.target.value) {
+                    selectedDate = new Date(e.target.value);
+                    currentDate = new Date(e.target.value);
+                    updateView();
+                }
+            });
+
+            // モーダル制御
+            manageCategoryBtn.addEventListener('click', openCategoryModal);
+            closeModalBtn.addEventListener('click', closeCategoryModal);
+            addCategoryForm.addEventListener('submit', handleAddCategory);
+        }
+
+        // --- メインロジック ---
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            let categoryStr = categorySelect.value;
+            if (categoryStr === 'その他' && otherDetailInput.value.trim() !== '') {
+                categoryStr = `その他 (${otherDetailInput.value.trim()})`;
+            }
+
+            const tx = {
+                id: Date.now().toString(),
+                date: dateInput.value,
+                category: categoryStr,
+                amount: parseInt(amountInput.value, 10),
+                memo: memoInput.value.trim()
+            };
+
+            transactions.push(tx);
+            saveData();
+            
+            // カレンダーと選択日を入力した日付に合わせる
+            selectedDate = new Date(tx.date);
+            currentDate = new Date(tx.date);
+            
+            resetForm();
+            updateView();
+        }
+
+        function resetForm() {
+            amountInput.value = '';
+            memoInput.value = '';
+            otherDetailInput.value = '';
+            categorySelect.value = categories[0];
+            otherDetailInput.classList.add('hidden');
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveData();
+            updateView();
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            updateView();
+        }
+
+        function selectDate(dateStr) {
+            selectedDate = new Date(dateStr);
+            dateInput.value = dateStr;
+            updateView();
+            // フォームへスクロール
+            document.querySelector('header').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- UI描画系 ---
+        function updateView() {
+            renderCalendar();
+            renderHistory();
+            renderCharts();
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const selectedDateStr = formatDateString(selectedDate);
+            const todayStr = formatDateString(new Date());
+            
+            calendarMonthYear.textContent = `${year}年${month + 1}月`;
+            calendarDays.innerHTML = '';
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let monthlyTotal = 0;
+            const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+            
+            // 当月の日別合計を計算して最大値を求める (ヒートマップ用)
+            const dailyTotals = [];
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${currentMonthPrefix}-${String(i).padStart(2, '0')}`;
+                const dailyTotal = transactions
+                    .filter(t => t.date === dateStr)
+                    .reduce((sum, t) => sum + t.amount, 0);
+                dailyTotals.push(dailyTotal);
+                monthlyTotal += dailyTotal;
+            }
+            const maxDailyTotal = Math.max(0, ...dailyTotals);
+
+            // 前月の余白
+            for (let i = 0; i < firstDay; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-gray-800 opacity-50 h-[65px] border-b border-r border-gray-700/50';
+                calendarDays.appendChild(cell);
+            }
+
+            // 当月の日付
+            for (let i = 1; i <= daysInMonth; i++) {
+                const curDate = new Date(year, month, i);
+                const dateStr = formatDateString(curDate);
+                const dailyTotal = dailyTotals[i - 1];
+
+                const isSelected = dateStr === selectedDateStr;
+                const isToday = dateStr === todayStr;
+                const dayOfWeek = curDate.getDay();
+
+                let dateColor = 'text-gray-300';
+                if (dayOfWeek === 0) dateColor = 'text-red-400';
+                if (dayOfWeek === 6) dateColor = 'text-blue-400';
+
+                // ヒートマップ: 視認性を保ちつつ赤色の濃淡をつける
+                let cellBgClass = 'bg-gray-800 hover:bg-gray-700';
+                let inlineStyle = '';
+                if (dailyTotal > 0 && maxDailyTotal > 0) {
+                    // 最大値に対する割合。最低でも少し色をつける
+                    const intensity = 0.2 + (dailyTotal / maxDailyTotal) * 0.7;
+                    inlineStyle = `background-color: rgba(220, 38, 38, ${intensity});`; // Tailwindのred-600ベース
+                }
+
+                const cell = document.createElement('div');
+                cell.className = `${cellBgClass} h-[65px] p-1 cursor-pointer transition-colors flex flex-col relative border-b border-r border-gray-700/50 ${isSelected ? 'ring-2 ring-blue-500 z-10' : ''}`;
+                if(inlineStyle) cell.style = inlineStyle;
+                cell.onclick = () => selectDate(dateStr);
+
+                // 日付数字 (ヒートマップで背景が赤くても見やすいように白をベースにする)
+                const headerClass = isToday 
+                    ? 'bg-blue-500 text-white w-5 h-5 rounded-full flex items-center justify-center -ml-0.5 -mt-0.5'
+                    : (dailyTotal > 0 ? 'text-white drop-shadow-md' : dateColor);
+                
+                const dateHeader = document.createElement('div');
+                dateHeader.className = `text-[11px] font-bold leading-none ${headerClass}`;
+                dateHeader.textContent = i;
+                cell.appendChild(dateHeader);
+
+                // 金額表示 (常に白でドロップシャドウをつけて視認性確保)
+                if (dailyTotal > 0) {
+                    const amountDisplay = document.createElement('div');
+                    amountDisplay.className = 'text-[9px] sm:text-[11px] font-bold text-white text-right mt-auto truncate w-full drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]';
+                    amountDisplay.textContent = dailyTotal.toLocaleString();
+                    cell.appendChild(amountDisplay);
+                }
+
+                calendarDays.appendChild(cell);
+            }
+
+            // 余白埋め
+            const totalCells = firstDay + daysInMonth;
+            const remainingCells = (7 - (totalCells % 7)) % 7;
+            for (let i = 0; i < remainingCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-gray-800 opacity-50 h-[65px] border-b border-r border-gray-700/50';
+                calendarDays.appendChild(cell);
+            }
+
+            monthlyTotalDisplay.textContent = formatCurrency(monthlyTotal);
+        }
+
+        function renderHistory() {
+            const selectedDateStr = formatDateString(selectedDate);
+            historyDateLabel.textContent = `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日`;
+            
+            const dailyTx = transactions.filter(t => t.date === selectedDateStr);
+            
+            historyList.innerHTML = '';
+            if (dailyTx.length === 0) {
+                historyList.classList.add('hidden');
+                emptyHistoryMsg.classList.remove('hidden');
+                return;
+            }
+
+            historyList.classList.remove('hidden');
+            emptyHistoryMsg.classList.add('hidden');
+
+            dailyTx.forEach(t => {
+                const li = document.createElement('li');
+                li.className = 'px-3 py-3 flex items-center justify-between hover:bg-gray-600/50 transition-colors group';
+                
+                // アイコンの判定
+                let iconClass = 'fa-tag';
+                if(t.category.includes('食費') || t.category.includes('飲み物') || t.category.includes('お菓子')) iconClass = 'fa-utensils';
+                else if(t.category.includes('交通')) iconClass = 'fa-train';
+                else if(t.category.includes('旅行')) iconClass = 'fa-plane';
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-800 text-gray-400 shrink-0 border border-gray-600">
+                            <i class="fa-solid ${iconClass} text-xs"></i>
+                        </div>
+                        <div class="truncate">
+                            <div class="text-sm font-bold text-gray-200 truncate">${t.category}</div>
+                            ${t.memo ? `<div class="text-xs text-gray-400 truncate">${t.memo}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0 ml-2">
+                        <span class="text-sm font-bold text-gray-200">${formatCurrency(t.amount)}</span>
+                        <button type="button" class="delete-btn text-gray-500 hover:text-red-400 focus:outline-none p-2 rounded transition-colors" data-id="${t.id}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                historyList.appendChild(li);
+            });
+
+            // 削除ボタンにイベント割り当て
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    deleteTransaction(id);
+                });
+            });
+        }
+
+        function renderCharts() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const currentMonthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+            const monthlyTx = transactions.filter(t => t.date.startsWith(currentMonthPrefix));
+
+            // --- 棒グラフデータ集計 ---
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const labels = [];
+            const barData = [];
+            for (let i = 1; i <= daysInMonth; i++) {
+                labels.push(`${i}日`);
+                const dateStr = `${currentMonthPrefix}-${String(i).padStart(2, '0')}`;
+                const total = monthlyTx.filter(t => t.date === dateStr).reduce((sum, t) => sum + t.amount, 0);
+                barData.push(total);
+            }
+
+            if (barChartInstance) barChartInstance.destroy();
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '支出 (円)',
+                        data: barData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue-500
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // divラッパーでサイズ制御するために必須
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false, color: '#374151' } },
+                        y: { grid: { color: '#374151' }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // --- ドーナツグラフデータ集計 ---
+            const categorySums = {};
+            monthlyTx.forEach(t => {
+                // "その他 (詳細)" は "その他" として集計する
+                const baseCat = t.category.startsWith('その他') ? 'その他' : t.category;
+                categorySums[baseCat] = (categorySums[baseCat] || 0) + t.amount;
+            });
+
+            const doughnutLabels = Object.keys(categorySums);
+            const doughnutData = Object.values(categorySums);
+            
+            // 鮮やかなカラーパレット
+            const colors = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'
+            ];
+
+            if (doughnutChartInstance) doughnutChartInstance.destroy();
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            doughnutChartInstance = new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: doughnutLabels,
+                    datasets: [{
+                        data: doughnutData,
+                        backgroundColor: colors.slice(0, doughnutLabels.length),
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // divラッパーでサイズ制御するために必須
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#e5e7eb', font:{size:10} } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // --- カテゴリ管理関連 ---
+        function updateCategorySelect() {
+            const currentVal = categorySelect.value;
+            categorySelect.innerHTML = '';
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
+            // 以前の選択値が存在すれば復元、なければ先頭を選択
+            if (categories.includes(currentVal)) {
+                categorySelect.value = currentVal;
+            } else {
+                categorySelect.value = categories[0];
+            }
+        }
+
+        function renderCategoryManageList() {
+            manageCategoryList.innerHTML = '';
+            categories.forEach((cat, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-gray-900 border border-gray-700 p-2 rounded text-sm';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = cat;
+                nameSpan.className = 'text-white font-medium';
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex items-center gap-1';
+
+                // 上へ移動ボタン
+                const upBtn = document.createElement('button');
+                upBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+                upBtn.className = `p-1.5 rounded ${index === 0 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`;
+                if(index > 0) upBtn.onclick = () => moveCategory(index, -1);
+                
+                // 下へ移動ボタン
+                const downBtn = document.createElement('button');
+                downBtn.innerHTML = '<i class="fa-solid fa-arrow-down"></i>';
+                downBtn.className = `p-1.5 rounded ${index === categories.length - 1 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`;
+                if(index < categories.length - 1) downBtn.onclick = () => moveCategory(index, 1);
+
+                // 削除ボタン (その他は削除不可)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                if(cat === 'その他') {
+                    deleteBtn.className = 'p-1.5 rounded text-gray-600 cursor-not-allowed ml-1';
+                    deleteBtn.title = 'その他は削除できません';
+                } else {
+                    deleteBtn.className = 'p-1.5 rounded text-red-500 hover:text-red-400 hover:bg-gray-700 ml-1';
+                    deleteBtn.onclick = () => deleteCategory(cat);
+                }
+
+                actionsDiv.appendChild(upBtn);
+                actionsDiv.appendChild(downBtn);
+                actionsDiv.appendChild(deleteBtn);
+
+                li.appendChild(nameSpan);
+                li.appendChild(actionsDiv);
+                manageCategoryList.appendChild(li);
+            });
+        }
+
+        function handleAddCategory(e) {
+            e.preventDefault();
+            const newCat = newCategoryInput.value.trim();
+            if (newCat && !categories.includes(newCat)) {
+                // "その他"がある場合は、"その他"の直前に追加する
+                const otherIndex = categories.indexOf('その他');
+                if (otherIndex !== -1) {
+                    categories.splice(otherIndex, 0, newCat);
+                } else {
+                    categories.push(newCat);
+                }
+                saveCategories();
+                newCategoryInput.value = '';
+                renderCategoryManageList();
+                updateCategorySelect();
+            }
+        }
+
+        function deleteCategory(catName) {
+            if (catName === 'その他') return; // 防御的プログラミング
+            categories = categories.filter(c => c !== catName);
+            saveCategories();
+            renderCategoryManageList();
+            updateCategorySelect();
+        }
+
+        function moveCategory(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= categories.length) return;
+            
+            // 要素の入れ替え
+            const temp = categories[index];
+            categories[index] = categories[newIndex];
+            categories[newIndex] = temp;
+            
+            saveCategories();
+            renderCategoryManageList();
+            updateCategorySelect();
+        }
+
+        function openCategoryModal() {
+            renderCategoryManageList();
+            categoryModal.classList.remove('hidden');
+            // 少し遅延させてアニメーションクラスを付与
+            setTimeout(() => {
+                categoryModal.classList.remove('opacity-0');
+                categoryModalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeCategoryModal() {
+            categoryModal.classList.add('opacity-0');
+            categoryModalContent.classList.add('scale-95');
+            // アニメーション完了後に非表示
+            setTimeout(() => {
+                categoryModal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- ユーティリティ関数 ---
+        function formatDateString(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatCurrency(amount) {
+            return '¥' + amount.toLocaleString();
+        }
+
+        // --- アプリ起動 ---
+        window.onload = init;
+
+    </script>
+</body>
+</html>
